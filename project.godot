@@ -20,6 +20,10 @@ window/size/width=1080
 window/size/height=2280
 window/handheld/orientation="portrait"
 
+[mono]
+
+project/assembly_name="Godot Android Demo"
+
 [physics]
 
 common/enable_pause_aware_picking=true
