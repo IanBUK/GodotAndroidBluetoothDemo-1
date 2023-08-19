@@ -21,9 +21,9 @@ onready var send_line_edit = $VBoxContainer/TextAndButtons/HBoxContainer/SendTex
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
-	
+	print("into _ready")
 	if Engine.has_singleton("GodotBluetooth344"):
-		
+		print("engine has singleton")
 		GodotBluetooth344 = Engine.get_singleton("GodotBluetooth344")
 		GodotBluetooth344.connect("_on_debug_message", self, "_on_debug_message")
 		GodotBluetooth344.connect("_on_device_found", self, "_on_device_found")
