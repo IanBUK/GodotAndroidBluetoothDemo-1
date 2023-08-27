@@ -12,7 +12,7 @@ var item_selected
 
 # Test UUIDs
 var service_uuid = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
-var read_uuid    = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
+var read_uuid    = "6e400003-b5a3-f393-e0a9-e50e24dcca s9e"
 var write_uuid   = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
 
 onready var devices_list = $VBoxContainer/Devices/FoundDevicesList
@@ -21,6 +21,9 @@ onready var send_line_edit = $VBoxContainer/TextAndButtons/HBoxContainer/SendTex
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
+	initBLE()
+
+func initBLE():
 	print("into _ready")
 	if Engine.has_singleton("GodotBluetooth344"):
 		print("engine has singleton")
@@ -33,7 +36,7 @@ func _ready():
 		GodotBluetooth344.connect("_on_characteristic_found", self, "_on_characteristic_found")
 		GodotBluetooth344.connect("_on_characteristic_finding", self, "_on_characteristic_finding")
 		GodotBluetooth344.connect("_on_characteristic_read", self, "_on_characteristic_read")
-
+		
 	# Check the permissions
 	check_permissions()
 	
@@ -127,7 +130,7 @@ func _on_bluetooth_status_change(status):
 	
 func check_permissions():
 	
-	var boolean
+	var boolean = false
 	
 	log_string("Checking bluetooth status")
 	boolean = GodotBluetooth344.bluetoothStatus()
@@ -144,6 +147,19 @@ func check_permissions():
 	log_string(boolean)
 	location_permission = boolean
 	
+	#GodotBluetooth344.setReportDuplicates(true)
+	log_string("Checking reportDuplicates")
+	boolean = GodotBluetooth344.getReportDuplicates()
+	log_string(boolean)
+	boolean = GodotBluetooth344.setReportDuplicates(false)
+	log_string("Checking reportDuplicates (should be false)")
+	boolean = GodotBluetooth344.getReportDuplicates()
+	log_string(boolean)	
+	boolean = GodotBluetooth344.setReportDuplicates(true)
+	log_string("Checking reportDuplicates (should be true)")
+	boolean = GodotBluetooth344.getReportDuplicates()
+	log_string(boolean)	
+
 	set_location_permission()
 	set_bluetooth_status()
 	set_location_status()
@@ -162,17 +178,83 @@ func _on_device_found(new_device):
 	
 	log_string("Got a new device: " + str(new_device))
 	devices.append(new_device)
-	devices_list.add_item(new_device.name + " " + new_device.address + " " + str(new_device.rssi))
+	
+	#var manufacturerData = new_device.manufacturerData;
+	#toHex(manufacturerData)
+	inflateRHBSensorAdvert(new_device)
+	#devices_list.add_item(new_device.name + " " + new_device.address + " " + str(new_device.rssi))
+
+func toHex(input):
+	var hex = input.hex_encode()
+	print ("hex: "+hex)
+
+var INDEX_MANUFACTURER_ID_LOW = 0;   
+var INDEX_MANUFACTURER_ID_HIGH = 1;   
+
+var INDEX_ORIENTATION_PITCH = 2;
+var INDEX_ORIENTATION_ROLL = 4;
+var INDEX_ORIENTATION_YAW = 6;
+
+var INDEX_ACCELERATION_X = 8;
+var INDEX_ACCELERATION_Y = 10;
+var INDEX_ACCELERATION_Z = 12;
+
+var INDEX_GYROSCOPE_X = 14;
+var INDEX_GYROSCOPE_Y = 16;
+var INDEX_GYROSCOPE_Z = 18;
+var INDEX_BATTERY = 20;
+
+func inflateRHBSensorAdvert(new_device):
+	var offset = 10
+	var advert = new_device.manufacturerData
+	#var advert = manufacturerData.hex_encode()
+	
+	var manufacturerIdBytes = advert.subarray(offset + INDEX_MANUFACTURER_ID_LOW,offset + INDEX_MANUFACTURER_ID_HIGH)
+	var manufacturerIdHex = manufacturerIdBytes.hex_encode()
+
+	var manufacturerIdLow = manufacturerIdHex[0]+manufacturerIdHex[1]
+	var manufacturerIdHigh = manufacturerIdHex[2]+manufacturerIdHex[3]
+	
+	var orientationPitch = (advert[offset + INDEX_ORIENTATION_PITCH] * 256) +  (advert[offset + INDEX_ORIENTATION_PITCH+1])
+	var orientationRoll = (advert[offset + INDEX_ORIENTATION_ROLL] * 256) +  (advert[offset + INDEX_ORIENTATION_ROLL+1])
+	var orientationYaw = (advert[offset + INDEX_ORIENTATION_YAW] * 256) +  (advert[offset + INDEX_ORIENTATION_YAW+1])
+		
+	var accelerationX = (advert[offset + INDEX_ACCELERATION_X] * 256) +  (advert[offset + INDEX_ACCELERATION_X+1])
+	var accelerationY = (advert[offset + INDEX_ACCELERATION_Y] * 256) +  (advert[offset + INDEX_ACCELERATION_Y+1])
+	var accelerationZ = (advert[offset + INDEX_ACCELERATION_Z] * 256) +  (advert[offset + INDEX_ACCELERATION_Z+1])
+		
+	var gyroscopeX = (advert[offset + INDEX_GYROSCOPE_X] * 256) +  (advert[offset + INDEX_GYROSCOPE_X+1])
+	var gyroscopeY = (advert[offset + INDEX_GYROSCOPE_Y] * 256) +  (advert[offset + INDEX_GYROSCOPE_Y+1])
+	var gyroscopeZ = (advert[offset + INDEX_GYROSCOPE_Z] * 256) +  (advert[offset + INDEX_GYROSCOPE_Z+1])
+		
+	var battery = 	advert[offset + INDEX_BATTERY]
+	
+	devices_list.add_item(new_device.name + " " + manufacturerIdHigh + manufacturerIdLow+" " + str(battery) + "% ")
+	
+	
+	
+	
+	
+
+
+
 
 func _on_scanButton_button_up():
+	#OS.alert("_on_scanButton_button_up pressed")
+	
 	
 	# Erase the results from the previous scan
+	#OS.alert("do devices = []")
 	devices = []
+	#OS.alert("do devices_list.clear()")
 	devices_list.clear()
+	#OS.alert("do item_selected = null")
 	item_selected = null
+	#OS.alert("do set_buttons()")
 	set_buttons()
-	
+	#OS.alert("do GodotBluetooth344.scan()")	
 	GodotBluetooth344.scan()
+	#OS.alert("called scan....")
 	
 # Prints and writes to the log
 func log_string(s):
